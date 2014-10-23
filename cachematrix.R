@@ -21,6 +21,11 @@ makeCacheMatrix <- function(mtrx = matrix())
     ## Due to lexical scoping rules of R, all functions defined here will
     ## work with these objects, so they represent a 'state' that stores
     ## cached data for a list object that is returned by this function.
+    if (!is.matrix(mtrx) || dim(mtrx)[1] != dim(mtrx)[2])
+    {
+        warning('The argument is not a square matrix, NA returned')
+        return(NA)
+    }
     
     # Initially there is no cached inverse
     inverse <- NULL
@@ -28,10 +33,18 @@ makeCacheMatrix <- function(mtrx = matrix())
     # Also it is reset when we set a new matrix
     set <- function(newMtrx) 
     {
-        # TBD: check that mtrx is a square matrix. Accoring to the task
+        # Check that mtrx is a square matrix. Accoring to the task
         # definition, it is assumed to be invertible
-        mtrx <<- newMtrx
-        inverse <<- NULL
+        if (!is.matrix(newMtrx) || dim(newMtrx)[1] != dim(newMtrx)[2])
+        {
+            warning('The argument is not a square matrix, call ignored')
+        }
+        else if (!identical(mtrx, newMtrx))
+            # calculating inverse is costly so checking for == is worth it
+        {
+            mtrx <<- newMtrx
+            inverse <<- NULL
+        }
     }
     
     # Getter just takes the matrix from the environment attached to the 
@@ -45,13 +58,12 @@ makeCacheMatrix <- function(mtrx = matrix())
     getInverse <- function() inverse
     
     ## Here we bundle all four methods in a list that is returned. Now one
-    ## can use this list with the net function and it will carry an environment
-    ## where data is cached
+    ## can pass this list to the next function as an environment storing the
+    ## cached data
     list(set = set, get = get,
          setInverse = setInverse,
          getInverse = getInverse)
 }
-
 
 ###############################################################################
 ## cacheSolve - return an inverse for the first argument. Performs as solve, 
@@ -63,21 +75,21 @@ makeCacheMatrix <- function(mtrx = matrix())
 ## useful, you should set the matrix more seldom than solving for its inverse
 ## of course.
 
-cacheSolve <- function(mtrx, ...) 
+cacheSolve <- function(cache, ...) 
 {
-    ## Return a matrix that is the inverse of 'mtrx'
+    ## Return a matrix that is the inverse of cache$get()
     
     # See if we have a cached inverse
-    inverse <- x$getInverse()
+    inverse <- cache$getInverse()
     if(!is.null(inverse)) 
     {
         message("getting cached data")
         return(inverse)
     }
     # We're here so no we don't -- calculate it
-    data <- x$get()
+    data <- cache$get()
     inverse <- solve(data, ...)
     # Cache it and then return
-    x$setInverse(inverse)
+    cache$setInverse(inverse)
     inverse
 }
