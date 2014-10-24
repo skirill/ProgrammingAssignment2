@@ -21,41 +21,41 @@ makeCacheMatrix <- function(mtrx = matrix())
     ## Due to lexical scoping rules of R, all functions defined here will
     ## work with these objects, so they represent a 'state' that stores
     ## cached data for a list object that is returned by this function.
-    if (!is.matrix(mtrx) || dim(mtrx)[1] != dim(mtrx)[2])
-    {
-        warning('The argument is not a square matrix, NA returned')
-        return(NA)
-    }
-    
-    # Initially there is no cached inverse
-    inverse <- NULL
+    myMtrx <- NULL
     
     # Also it is reset when we set a new matrix
     set <- function(newMtrx) 
     {
         # Check that mtrx is a square matrix. Accoring to the task
         # definition, it is assumed to be invertible
-        if (!is.matrix(newMtrx) || dim(newMtrx)[1] != dim(newMtrx)[2])
+        tmpMtrx <- as.matrix(newMtrx)
+        if (!is.matrix(tmpMtrx) || dim(tmpMtrx)[1] != dim(tmpMtrx)[2])
         {
             warning('The argument is not a square matrix, call ignored')
         }
-        else if (!identical(mtrx, newMtrx))
+        else if (!identical(myMtrx, tmpMtrx))
             # calculating inverse is costly so checking for == is worth it
         {
-            mtrx <<- newMtrx
+            myMtrx <<- tmpMtrx
             inverse <<- NULL
         }
     }
     
     # Getter just takes the matrix from the environment attached to the 
     ## cached matrix object
-    get <- function() mtrx
+    get <- function() myMtrx
     
     ## Called when inverse was calculated on demand to store it in a state
     setInverse <- function(newInverse) inverse <<- newInverse
     
     ## Just return inverse from state, maybe NULL
     getInverse <- function() inverse
+    
+    ## This call valudates the parameter and may leave it NULL
+    set(mtrx)
+    
+    # Initially there is no cached inverse
+    setInverse(NULL)
     
     ## Here we bundle all four methods in a list that is returned. Now one
     ## can pass this list to the next function as an environment storing the
@@ -88,8 +88,12 @@ cacheSolve <- function(cache, ...)
     }
     # We're here so no we don't -- calculate it
     data <- cache$get()
-    inverse <- solve(data, ...)
-    # Cache it and then return
-    cache$setInverse(inverse)
+    if(!is.null(data)) 
+    {
+        inverse <- solve(data, ...)
+        # Cache it and then return
+        cache$setInverse(inverse)
+    } # otherwise it remains NULL
+
     inverse
 }
